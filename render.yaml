@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: protrack
+    runtime: python
+    plan: free
+    region: singapore
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -c gunicorn.conf.py app:app
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: WEB_CONCURRENCY
+        value: 2
