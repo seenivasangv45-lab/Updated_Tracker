@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Reports</h1>
+    <p>Customize columns and filters · Export to Excel</p>
+</div>
+
+<div class="card" style="margin-bottom:20px">
+    <div class="card-header"><h2>Filters & Columns</h2></div>
+    <form method="GET" id="reportForm">
+        <div class="form-row">
+            <div class="form-group"><label class="form-label">From Date</label><input type="date" name="from" class="form-input" value="{{ df }}"></div>
+            <div class="form-group"><label class="form-label">To Date</label><input type="date" name="to" class="form-input" value="{{ dt }}"></div>
+            <div class="form-group"><label class="form-label">Status</label>
+                <select name="status" class="form-select">
+                    <option value="">All</option>
+                    <option value="Unassigned" {% if status_f=='Unassigned' %}selected{% endif %}>Unassigned</option>
+                    <option value="In-Process" {% if status_f=='In-Process' %}selected{% endif %}>In-Process</option>
+                    <option value="Pending" {% if status_f=='Pending' %}selected{% endif %}>Pending</option>
+                    <option value="Completed" {% if status_f=='Completed' %}selected{% endif %}>Completed</option>
+                    <option value="Finalized" {% if status_f=='Finalized' %}selected{% endif %}>Finalized</option>
+                    <option value="Cancelled" {% if status_f=='Cancelled' %}selected{% endif %}>Cancelled</option>
+                </select>
+            </div>
+            <div class="form-group"><label class="form-label">Priority</label>
+                <select name="priority" class="form-select">
+                    <option value="">All</option>
+                    <option value="High" {% if priority_f=='High' %}selected{% endif %}>High</option>
+                    <option value="Medium" {% if priority_f=='Medium' %}selected{% endif %}>Medium</option>
+                    <option value="Low" {% if priority_f=='Low' %}selected{% endif %}>Low</option>
+                </select>
+            </div>
+            <div class="form-group"><label class="form-label">User</label>
+                <select name="user_id" class="form-select">
+                    <option value="">All</option>
+                    {% for u in all_users %}<option value="{{ u['id'] }}" {% if user_f == u['id']|string %}selected{% endif %}>{{ u['full_name'] }}</option>{% endfor %}
+                </select>
+            </div>
+        </div>
+        
+        <div class="form-group" style="margin-top:14px">
+            <label class="form-label">Select Columns to Display</label>
+            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(170px, 1fr)); gap:6px; padding:10px; background:var(--bg); border-radius:var(--radius-sm)">
+                {% for key, label in available_cols.items() %}
+                <label class="checkbox-label" style="font-size:0.82rem">
+                    <input type="checkbox" name="cols" value="{{ key }}" {% if key in selected_cols %}checked{% endif %}>
+                    {{ label }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <div class="btn-group" style="margin-top:14px">
+            <button type="submit" class="btn btn-primary">Apply Filters</button>
+            <button type="submit" formaction="{{ url_for('export_report') }}" class="btn btn-success">Export to CSV</button>
+            <a href="{{ url_for('reports') }}" class="btn btn-secondary">Reset</a>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>Results — {{ rows|length }} accounts</h2>
+    </div>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                {% for col in selected_cols %}<th>{{ available_cols.get(col, col) }}</th>{% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in rows %}
+                <tr>
+                    {% for col in selected_cols %}
+                    <td>
+                        {% set val = r.get(col) %}
+                        {% if col == 'tat_status' %}
+                            {% if val == 'Met' or val == 'Within' %}<span class="badge badge-green">{{ val }}</span>
+                            {% elif val == 'Breached' %}<span class="badge badge-red">{{ val }}</span>
+                            {% else %}—{% endif %}
+                        {% elif col == 'priority' %}
+                            {% if val == 'High' %}<span class="badge badge-red">{{ val }}</span>
+                            {% elif val == 'Medium' %}<span class="badge badge-amber">{{ val }}</span>
+                            {% else %}<span class="badge badge-gray">{{ val }}</span>{% endif %}
+                        {% else %}
+                            {{ val or '—' }}
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+                {% if not rows %}<tr><td colspan="{{ selected_cols|length }}" class="empty-state">No results</td></tr>{% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Production{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-row">
+        <div>
+            <h1>Production Window</h1>
+            <p>Your active work queue</p>
+        </div>
+        {% if session.get('user_type') in ('Coder','Biller') %}
+        <a href="{{ url_for('get_next_priority') }}" class="btn btn-primary">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 13V3M8 3L4 7M8 3L12 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            Get Next Priority
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="stat-grid">
+    <div class="stat-card blue"><div class="stat-label">Pending</div><div class="stat-value">{{ stats.pending }}</div></div>
+    <div class="stat-card green"><div class="stat-label">Completed</div><div class="stat-value">{{ stats.completed }}</div></div>
+    <div class="stat-card red"><div class="stat-label">High Priority</div><div class="stat-value">{{ stats.high_priority }}</div></div>
+</div>
+
+<!-- View tabs -->
+<div class="filter-bar">
+    <a href="{{ url_for('production_view', view='pending') }}" class="btn btn-sm {% if current_view == 'pending' %}btn-primary{% else %}btn-secondary{% endif %}">Pending</a>
+    <a href="{{ url_for('production_view', view='completed') }}" class="btn btn-sm {% if current_view == 'completed' %}btn-primary{% else %}btn-secondary{% endif %}">Completed</a>
+    <a href="{{ url_for('production_view', view='high_priority') }}" class="btn btn-sm {% if current_view == 'high_priority' %}btn-primary{% else %}btn-secondary{% endif %}">High Priority Only</a>
+</div>
+
+<div class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Invoice #</th><th>Patient</th><th>Payer</th><th>Received</th><th>Status</th><th>Priority</th>
+                    {% if session.get('user_type') == 'Biller' %}<th>Coder</th>{% endif %}
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for acc in accounts %}
+                <tr>
+                    <td><strong>{{ acc['invoice_number'] }}</strong></td>
+                    <td>{{ acc['patient_name'] or '—' }}</td>
+                    <td>{{ acc['payer_name'] or '—' }}</td>
+                    <td>{{ acc['received_date'] or '—' }}</td>
+                    <td><span class="badge {% if 'Completed' in acc['status'] or 'Finalized' in acc['status'] or 'Passed' in acc['status'] %}badge-green{% elif 'Rework' in acc['status'] %}badge-red{% else %}badge-blue{% endif %}">{{ acc['status'] }}</span></td>
+                    <td>{% if acc['priority'] == 'High' %}<span class="badge badge-red">HIGH</span>{% else %}<span class="badge badge-gray">Normal</span>{% endif %}</td>
+                    {% if session.get('user_type') == 'Biller' %}<td>{{ acc['coder_name'] if acc['coder_name'] is defined else '—' }}</td>{% endif %}
+                    <td><a href="{{ url_for('account_detail', account_id=acc['id']) }}" class="btn btn-sm btn-primary">{% if current_view == 'completed' %}View{% else %}Work{% endif %}</a></td>
+                </tr>
+                {% endfor %}
+                {% if not accounts %}<tr><td colspan="8" class="empty-state">No accounts — you're all caught up!</td></tr>{% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

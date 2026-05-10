@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Edit User{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-row">
+        <h1>Edit User: {{ user['full_name'] }}</h1>
+        <a href="{{ url_for('users_list') }}" class="btn btn-secondary">Back</a>
+    </div>
+</div>
+
+<div class="card" style="max-width:600px">
+    <form method="POST">
+        <div class="form-group">
+            <label class="form-label">Full Name</label>
+            <input type="text" name="full_name" class="form-input" required value="{{ user['full_name'] }}">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Username</label>
+            <input type="text" class="form-input" value="{{ user['username'] }}" disabled>
+        </div>
+        <div class="form-group">
+            <label class="form-label">New Password (leave blank to keep)</label>
+            <input type="password" name="new_password" class="form-input" minlength="8" placeholder="Min 8 chars">
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">Role</label>
+                <select name="role" class="form-select" id="roleSelect" onchange="toggleUserType()">
+                    <option value="User" {% if user['role'] == 'User' %}selected{% endif %}>User</option>
+                    <option value="Admin" {% if user['role'] == 'Admin' %}selected{% endif %}>Admin</option>
+                    <option value="Auditor" {% if user['role'] == 'Auditor' %}selected{% endif %}>Auditor</option>
+                    {% if session.get('role') == 'SuperAdmin' %}
+                    <option value="SuperAdmin" {% if user['role'] == 'SuperAdmin' %}selected{% endif %}>Super Admin</option>
+                    {% endif %}
+                </select>
+            </div>
+            <div class="form-group" id="userTypeGroup" {% if user['role'] != 'User' %}style="display:none"{% endif %}>
+                <label class="form-label">User Type</label>
+                <select name="user_type" class="form-select">
+                    <option value="Coder" {% if user['user_type'] == 'Coder' %}selected{% endif %}>Coder</option>
+                    <option value="Biller" {% if user['user_type'] == 'Biller' %}selected{% endif %}>Biller</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="checkbox-label">
+                <input type="checkbox" name="is_active" {% if user['is_active'] %}checked{% endif %}>
+                Active Account
+            </label>
+        </div>
+        <button type="submit" class="btn btn-primary">Update User</button>
+    </form>
+</div>
+<script>
+function toggleUserType() {
+    document.getElementById('userTypeGroup').style.display = document.getElementById('roleSelect').value === 'User' ? 'block' : 'none';
+}
+</script>
+{% endblock %}

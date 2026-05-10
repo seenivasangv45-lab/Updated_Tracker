@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Emergency Reassignment{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Emergency Reassignment</h1>
+    <p>Route all accounts from one user to another (for emergency leave)</p>
+</div>
+
+<div class="card" style="max-width:600px">
+    <form method="POST">
+        <div class="form-group">
+            <label class="form-label">From User (on leave)</label>
+            <select name="from_user" class="form-select" required>
+                <option value="">Select user on leave</option>
+                {% for u in users %}
+                <option value="{{ u['id'] }}">{{ u['full_name'] }} ({{ u['role'] }}{% if u['user_type'] %} — {{ u['user_type'] }}{% endif %})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">To User (available)</label>
+            <select name="to_user" class="form-select" required>
+                <option value="">Select available user</option>
+                {% for u in users %}
+                <option value="{{ u['id'] }}">{{ u['full_name'] }} ({{ u['role'] }}{% if u['user_type'] %} — {{ u['user_type'] }}{% endif %})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div style="background:var(--amber-50); border:1px solid var(--amber-100); border-radius:var(--radius-sm); padding:12px 16px; margin-bottom:18px; font-size:0.88rem; color:var(--amber-600)">
+            <strong>Warning:</strong> This will reassign ALL active accounts (pending coding/billing) from the selected user to the new user. This action cannot be undone automatically.
+        </div>
+        <button type="submit" class="btn btn-danger">Reassign All Accounts</button>
+    </form>
+</div>
+{% endblock %}

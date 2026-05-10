@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+{% block title %}Coding Review{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-row">
+        <div>
+            <h1>Coding Review</h1>
+            <p>Process Your Assigned Claims</p>
+        </div>
+    </div>
+</div>
+
+<!-- Stat cards (top metrics) -->
+<div class="stat-grid" style="margin-bottom:20px">
+    <div class="stat-card blue">
+        <div class="stat-label">Total Assigned</div>
+        <div class="stat-value">{{ stats.total_assigned }}</div>
+    </div>
+    <div class="stat-card green">
+        <div class="stat-label">Completed</div>
+        <div class="stat-value">{{ stats.completed }}</div>
+    </div>
+    <div class="stat-card amber">
+        <div class="stat-label">In-Process</div>
+        <div class="stat-value">{{ stats.in_process }}</div>
+    </div>
+    <div class="stat-card purple">
+        <div class="stat-label">Pending</div>
+        <div class="stat-value">{{ stats.pending }}</div>
+    </div>
+    <div class="stat-card red">
+        <div class="stat-label">High Priority</div>
+        <div class="stat-value">{{ stats.high_priority }}</div>
+    </div>
+</div>
+
+<!-- Split layout: Work Queue + Claim Detail -->
+<div class="cr-split">
+    <!-- LEFT: Work Queue -->
+    <div class="card cr-queue">
+        <div class="cr-queue-header">
+            <h2>Work Queue</h2>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
+                <a href="{{ url_for('get_next_priority') }}" class="btn btn-sm btn-primary">Get Next Priority</a>
+                <form method="GET" style="display:flex; gap:6px">
+                    <select name="status" class="form-select" style="width:auto; padding:6px 10px; font-size:0.82rem" onchange="this.form.submit()">
+                        <option value="">Filter by Status</option>
+                        <option value="Assigned" {% if status_filter=='Assigned' %}selected{% endif %}>Assigned</option>
+                        <option value="In-Process" {% if status_filter=='In-Process' %}selected{% endif %}>In-Process</option>
+                        <option value="Pending" {% if status_filter=='Pending' %}selected{% endif %}>Pending</option>
+                        <option value="Rework - Coder" {% if status_filter=='Rework - Coder' %}selected{% endif %}>Rework</option>
+                        <option value="Clarification Needed" {% if status_filter=='Clarification Needed' %}selected{% endif %}>Clarification</option>
+                    </select>
+                    {% if selected %}<input type="hidden" name="account_id" value="{{ selected['id'] }}">{% endif %}
+                </form>
+            </div>
+        </div>
+
+        <div class="cr-queue-list">
+            <table class="cr-table">
+                <thead>
+                    <tr>
+                        <th style="width:30px"></th>
+                        <th>Account #</th>
+                        <th>Encounter</th>
+                        <th>Received</th>
+                        <th>Status</th>
+                        <th>Priority</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for acc in accounts %}
+                <tr class="cr-row {% if selected and selected['id'] == acc['id'] %}selected{% endif %}" 
+                    onclick="window.location.href='{{ url_for('coding_review', account_id=acc['id'], status=status_filter) }}'">
+                    <td><input type="radio" {% if selected and selected['id'] == acc['id'] %}checked{% endif %} onclick="event.stopPropagation()"></td>
+                    <td><strong>{{ acc['invoice_number'] }}</strong></td>
+                    <td style="font-family:var(--font-mono); font-size:0.82rem">{{ acc['encounter_id'] or '—' }}</td>
+                    <td style="font-size:0.82rem">{{ acc['upload_date'] or '—' }}</td>
+                    <td>
+                        <span class="badge {% if acc['status']=='In-Process' %}badge-amber{% elif acc['status']=='Pending' or acc['status']=='Assigned' %}badge-purple{% elif 'Rework' in acc['status'] %}badge-red{% else %}badge-blue{% endif %}">
+                            {{ acc['status'] }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if acc['priority']=='High' %}<span class="badge badge-red">High</span>
+                        {% elif acc['priority']=='Medium' %}<span class="badge badge-amber">Medium</span>
+                        {% else %}<span class="badge badge-gray">Low</span>{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not accounts %}
+                <tr><td colspan="6" class="empty-state">No accounts in queue</td></tr>
+                {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- RIGHT: Claim Detail Panel -->
+    <div class="card cr-detail">
+        {% if selected %}
+        <div class="cr-detail-header">
+            <h2>Claim Detail: Account {{ selected['invoice_number'] }}</h2>
+        </div>
+
+        <form method="POST" action="{{ url_for('save_claim_detail', account_id=selected['id']) }}" class="cr-form">
+            <input type="hidden" name="current_filter" value="{{ status_filter }}">
+            
+            <div class="cr-form-row">
+                <div class="form-group cr-col">
+                    <label class="form-label">Payer</label>
+                    <input type="text" name="payer_name" class="form-input" value="{{ selected['payer_name'] or '' }}">
+                </div>
+                <div class="form-group cr-col">
+                    <label class="form-label">DOS</label>
+                    <input type="date" name="date_of_service" class="form-input" value="{{ selected['date_of_service'] or '' }}">
+                </div>
+                <div class="form-group cr-col">
+                    <label class="form-label">Invoice #</label>
+                    <input type="text" name="invoice_number" class="form-input" value="{{ selected['invoice_number'] or '' }}" readonly>
+                </div>
+            </div>
+
+            <div class="cr-form-row">
+                <div class="form-group cr-col-2">
+                    <label class="form-label">Provider</label>
+                    <input type="text" name="provider" class="form-input" value="{{ selected['provider'] or '' }}">
+                </div>
+                <div class="form-group cr-col-2">
+                    <label class="form-label">CPT Codes</label>
+                    <input type="text" name="cpt_codes" class="form-input" value="{{ selected['cpt_codes'] or '' }}" placeholder="e.g. 99213, 85025">
+                </div>
+            </div>
+
+            <div class="cr-form-row">
+                <div class="form-group cr-col-2">
+                    <label class="form-label">ICD-10 Codes</label>
+                    <input type="text" name="icd10_codes" class="form-input" value="{{ selected['icd10_codes'] or '' }}" placeholder="e.g. E11.9">
+                </div>
+                <div class="form-group cr-col-2">
+                    <label class="form-label">Total Amount</label>
+                    <input type="text" name="total_charge" class="form-input" value="{{ selected['total_charge'] or '' }}" placeholder="$0.00">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Diagnosis</label>
+                <input type="text" name="diagnosis" class="form-input" value="{{ selected['diagnosis'] or '' }}" placeholder="e.g. Type 2 Diabetes">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Notes</label>
+                <textarea name="notes" class="form-textarea" rows="2" placeholder="None">{{ selected['notes'] or '' }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Coder Comment Field</label>
+                <textarea name="coder_comments" class="form-textarea" rows="3">{{ selected['coder_comments'] or '' }}</textarea>
+            </div>
+
+            <div class="cr-form-footer">
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+                    <label class="form-label" style="margin:0">Set Claim Status:</label>
+                    <select name="claim_status" class="form-select" style="width:auto">
+                        <option value="">— Keep Current —</option>
+                        <option value="Completed">✓ Completed</option>
+                        <option value="In-Process">⏳ In-Process</option>
+                        <option value="Pending">⏸ Pending</option>
+                    </select>
+                </div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap">
+                    <button type="submit" name="next_action" value="same" class="btn btn-secondary">Save Changes</button>
+                    <button type="submit" name="next_action" value="next" class="btn btn-success">Save & Next</button>
+                </div>
+            </div>
+        </form>
+        {% else %}
+        <div class="empty-state" style="padding:60px 20px">
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" style="opacity:0.3">
+                <rect x="8" y="6" width="32" height="36" rx="3" stroke="currentColor" stroke-width="2"/>
+                <path d="M14 16H34M14 22H34M14 28H28" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <p>Select a claim from the work queue to view details</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.cr-split {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 20px;
+    align-items: start;
+}
+.cr-queue, .cr-detail {
+    padding: 0;
+    overflow: hidden;
+}
+.cr-queue-header, .cr-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-light);
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.cr-queue-header h2, .cr-detail-header h2 {
+    font-size: 1rem;
+    margin: 0;
+}
+.cr-queue-list {
+    max-height: 600px;
+    overflow-y: auto;
+}
+.cr-table {
+    font-size: 0.85rem;
+}
+.cr-table thead th {
+    padding: 10px 12px;
+    background: var(--bg);
+    font-size: 0.7rem;
+}
+.cr-table tbody td {
+    padding: 11px 12px;
+    cursor: pointer;
+}
+.cr-row.selected {
+    background: var(--blue-50) !important;
+    border-left: 3px solid var(--blue-600);
+}
+.cr-row.selected td:first-child {
+    padding-left: 9px;
+}
+.cr-form {
+    padding: 20px;
+}
+.cr-form-row {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: 1fr 1fr 1fr;
+    margin-bottom: 4px;
+}
+.cr-form-row > .cr-col-2 {
+    grid-column: span 1;
+}
+.cr-form-row:has(.cr-col-2) {
+    grid-template-columns: 1fr 1fr;
+}
+.cr-form-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding-top: 14px;
+    margin-top: 14px;
+    border-top: 1px solid var(--border-light);
+}
+@media (max-width: 1024px) {
+    .cr-split { grid-template-columns: 1fr; }
+    .cr-form-row { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 600px) {
+    .cr-form-row { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}

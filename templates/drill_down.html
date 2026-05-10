@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-row">
+        <div>
+            <h1>{{ title }}</h1>
+            <p>{{ accounts|length }} accounts</p>
+        </div>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr><th>Invoice #</th><th>Patient</th><th>Payer</th><th>Received</th><th>Status</th><th>Priority</th><th>Coder</th><th>Action</th></tr>
+            </thead>
+            <tbody>
+                {% for acc in accounts %}
+                <tr>
+                    <td><strong>{{ acc['invoice_number'] }}</strong></td>
+                    <td>{{ acc['patient_name'] or '—' }}</td>
+                    <td>{{ acc['payer_name'] or '—' }}</td>
+                    <td>{{ acc['received_date'] or '—' }}</td>
+                    <td><span class="badge {% if 'Completed' in acc['status'] or 'Finalized' in acc['status'] or 'Passed' in acc['status'] %}badge-green{% elif 'Rework' in acc['status'] or 'Failed' in acc['status'] %}badge-red{% elif acc['status'] == 'Unassigned' %}badge-gray{% else %}badge-blue{% endif %}">{{ acc['status'] }}</span></td>
+                    <td>{% if acc['priority'] == 'High' %}<span class="badge badge-red">HIGH</span>{% else %}<span class="badge badge-gray">Normal</span>{% endif %}</td>
+                    <td>{{ acc['coder_name'] or '—' }}</td>
+                    <td><a href="{{ url_for('account_detail', account_id=acc['id']) }}" class="btn btn-sm btn-secondary">View</a></td>
+                </tr>
+                {% endfor %}
+                {% if not accounts %}
+                <tr><td colspan="8" class="empty-state">No accounts found</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

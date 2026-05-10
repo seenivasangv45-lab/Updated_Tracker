@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Upload Inventory{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-row">
+        <div>
+            <h1>Upload FIN14 Report</h1>
+            <p>TAT is calculated as 48 hours from first upload. Duplicate accounts are auto-skipped.</p>
+        </div>
+        <a href="{{ url_for('inventory_list') }}" class="btn btn-secondary">Back to Inventory</a>
+    </div>
+</div>
+
+<div class="card" style="max-width:640px; margin-bottom:20px">
+    <form method="POST" enctype="multipart/form-data">
+        <div class="upload-area" id="uploadArea">
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                <path d="M24 32V12M24 12L17 19M24 12L31 19" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+                <path d="M8 30V38C8 39.1 8.9 40 10 40H38C39.1 40 40 39.1 40 38V30" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+            </svg>
+            <p>Click or drag & drop your FIN14 file here</p>
+            <p class="hint">Accepts: .csv or .tsv (tab-separated) files from Experity</p>
+            <input type="file" name="file" accept=".csv,.tsv,.txt" style="display:none" required>
+        </div>
+        <div class="form-group" style="margin-top:16px">
+            <label class="form-label">Default Priority for this Batch</label>
+            <select name="upload_priority" class="form-select">
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+                <option value="Low">Low</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center">Upload & Process</button>
+    </form>
+</div>
+
+{% if uploads %}
+<div class="card">
+    <div class="card-header"><h2>Upload History (Permanent Log)</h2></div>
+    <div class="table-wrapper">
+        <table>
+            <thead><tr><th>Batch Name</th><th>File</th><th>Added</th><th>Skipped</th><th>By</th><th>Date</th></tr></thead>
+            <tbody>
+            {% for u in uploads %}
+            <tr>
+                <td><strong>{{ u['batch_name'] }}</strong></td>
+                <td style="font-size:0.82rem">{{ u['filename'] }}</td>
+                <td><span class="badge badge-green">{{ u['records_added'] }}</span></td>
+                <td>{{ u['duplicates_skipped'] }}</td>
+                <td>{{ u['full_name'] or '—' }}</td>
+                <td style="font-size:0.82rem">{{ u['uploaded_at'] }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

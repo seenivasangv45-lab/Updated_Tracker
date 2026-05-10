@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Users{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-row">
+        <div>
+            <h1>User Management</h1>
+            <p>Manage user accounts and access levels</p>
+        </div>
+        <a href="{{ url_for('add_user') }}" class="btn btn-primary">+ Add User</a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr><th>Name</th><th>Username</th><th>Role</th><th>Type</th><th>Status</th><th>Last Login</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td><strong>{{ user['full_name'] }}</strong></td>
+                    <td style="font-family:var(--font-mono); font-size:0.82rem">{{ user['username'] }}</td>
+                    <td>
+                        <span class="badge {% if user['role'] == 'SuperAdmin' %}badge-red{% elif user['role'] == 'Admin' %}badge-purple{% elif user['role'] == 'Auditor' %}badge-blue{% else %}badge-gray{% endif %}">
+                            {{ user['role'] }}
+                        </span>
+                    </td>
+                    <td>{{ user['user_type'] or '—' }}</td>
+                    <td>{% if user['is_active'] %}<span class="badge badge-green">Active</span>{% else %}<span class="badge badge-red">Inactive</span>{% endif %}</td>
+                    <td style="font-size:0.82rem">{{ user['last_login'] or 'Never' }}</td>
+                    <td>
+                        <div class="btn-group">
+                            <a href="{{ url_for('edit_user', user_id=user['id']) }}" class="btn btn-sm btn-secondary">Edit</a>
+                            {% if can_delete() and user['username'] not in ('admin','superadmin') and user['id'] != session.get('user_id') %}
+                            <form method="POST" action="{{ url_for('delete_user', user_id=user['id']) }}" style="display:inline" onsubmit="return confirm('Permanently delete &quot;{{ user['full_name'] }}&quot;?')">
+                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

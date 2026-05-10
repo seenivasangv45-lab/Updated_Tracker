@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block title %}Account {{ account['invoice_number'] }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-row">
+        <div>
+            <h1>{{ account['invoice_number'] }}</h1>
+            <p>{{ account['patient_name'] or 'No patient name' }} · {{ account['status'] }}</p>
+        </div>
+        <div class="btn-group">
+            <a href="{{ url_for('inventory_list') }}" class="btn btn-secondary">Back</a>
+            {% if session.get('user_type') in ('Coder','Biller') %}
+            <a href="{{ url_for('get_next_priority') }}" class="btn btn-primary">Next Priority</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="detail-grid">
+    <div class="card">
+        <div class="card-header"><h2>Account Details</h2></div>
+        <div class="detail-row"><span class="detail-label">Invoice #</span><span class="detail-value">{{ account['invoice_number'] }}</span></div>
+        <div class="detail-row"><span class="detail-label">Patient</span><span class="detail-value">{{ account['patient_name'] or '—' }}</span></div>
+        <div class="detail-row"><span class="detail-label">Patient #</span><span class="detail-value">{{ account['patient_number'] or '—' }}</span></div>
+        <div class="detail-row"><span class="detail-label">Payer</span><span class="detail-value">{{ account['payer_name'] or '—' }}</span></div>
+        <div class="detail-row"><span class="detail-label">Location</span><span class="detail-value">{{ account['location'] or '—' }}</span></div>
+        <div class="detail-row"><span class="detail-label">Provider</span><span class="detail-value">{{ account['provider'] or '—' }}</span></div>
+        <div class="detail-row"><span class="detail-label">Total Charge</span><span class="detail-value">{{ account['total_charge'] or '—' }}</span></div>
+        <div class="detail-row"><span class="detail-label">Received</span><span class="detail-value">{{ account['received_date'] or '—' }}</span></div>
+        <div class="detail-row"><span class="detail-label">Status</span><span class="detail-value"><span class="badge {% if 'Finalized' in account['status'] or 'Passed' in account['status'] or 'Completed' in account['status'] %}badge-green{% elif 'Rework' in account['status'] or 'Failed' in account['status'] %}badge-red{% elif account['status'] == 'Unassigned' %}badge-gray{% else %}badge-blue{% endif %}">{{ account['status'] }}</span></span></div>
+        <div class="detail-row"><span class="detail-label">Priority</span><span class="detail-value">{% if account['priority'] == 'High' %}<span class="badge badge-red">HIGH</span>{% else %}<span class="badge badge-gray">Normal</span>{% endif %}</span></div>
+        <div class="detail-row"><span class="detail-label">TAT Days</span><span class="detail-value">{{ account['tat_days'] or '—' }}</span></div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><h2>Workflow</h2></div>
+        <div class="detail-row"><span class="detail-label">Coder</span><span class="detail-value">{{ account['coder_name'] or '—' }}</span></div>
+        <div class="detail-row"><span class="detail-label">Biller</span><span class="detail-value">{{ account['biller_name'] or '—' }}</span></div>
+        <div class="detail-row"><span class="detail-label">Coded At</span><span class="detail-value">{{ account['coded_at'] or '—' }}</span></div>
+        <div class="detail-row"><span class="detail-label">Billed At</span><span class="detail-value">{{ account['billed_at'] or '—' }}</span></div>
+        <div class="detail-row"><span class="detail-label">Finalized</span><span class="detail-value">{{ account['finalized_at'] or '—' }}</span></div>
+        <div class="detail-row"><span class="detail-label">Audit</span><span class="detail-value">{% if account['audit_status'] == 'Passed' %}<span class="badge badge-green">Passed</span>{% elif account['audit_status'] == 'Failed' %}<span class="badge badge-red">Failed</span>{% else %}—{% endif %}</span></div>
+        <div class="detail-row"><span class="detail-label">Auditor</span><span class="detail-value">{{ account['auditor_name'] or '—' }}</span></div>
+    </div>
+</div>
+
+<!-- Comments -->
+<div class="grid-2" style="margin-bottom:16px">
+    {% if account['coder_comments'] %}
+    <div class="card"><div class="card-header"><h2>Coder Comments</h2></div><div class="comment-box"><div class="comment-author">{{ account['coder_name'] or 'Coder' }}</div>{{ account['coder_comments'] }}</div></div>
+    {% endif %}
+    {% if account['biller_comments'] %}
+    <div class="card"><div class="card-header"><h2>Biller Comments</h2></div><div class="comment-box"><div class="comment-author">{{ account['biller_name'] or 'Biller' }}</div>{{ account['biller_comments'] }}</div></div>
+    {% endif %}
+    {% if account['auditor_comments'] %}
+    <div class="card"><div class="card-header"><h2>Auditor Comments</h2></div><div class="comment-box"><div class="comment-author">{{ account['auditor_name'] or 'Auditor' }}</div>{{ account['auditor_comments'] }}</div></div>
+    {% endif %}
+</div>
+
+<!-- Coder Actions -->
+{% if session.get('user_type') == 'Coder' and account['status'] in ('Assigned','In Progress','Rework - Coder','Clarification Needed') %}
+<div class="card" style="margin-bottom:16px">
+    <div class="card-header"><h2>Coder Actions</h2></div>
+    <form method="POST" action="{{ url_for('code_account', account_id=account['id']) }}">
+        {% if account['status'] in ('Assigned','Rework - Coder','Clarification Needed') %}
+        <div style="margin-bottom:12px"><button type="submit" name="action" value="start" class="btn btn-secondary">Start Coding</button></div>
+        {% endif %}
+        {% if account['status'] in ('In Progress','Rework - Coder','Clarification Needed') %}
+        <div class="form-group">
+            <label class="form-label">Coding Comments & Instructions</label>
+            <textarea name="coder_comments" class="form-textarea" required>{{ account['coder_comments'] or '' }}</textarea>
+        </div>
+        <button type="submit" name="action" value="complete" class="btn btn-success">Complete Coding</button>
+        {% endif %}
+    </form>
+</div>
+{% endif %}
+
+<!-- Biller Actions -->
+{% if session.get('user_type') == 'Biller' and account['status'] in ('Assigned to Biller','Billing In Progress','Rework - Biller') %}
+<div class="card" style="margin-bottom:16px">
+    <div class="card-header"><h2>Biller Actions</h2></div>
+    {% if account['coder_comments'] %}
+    <div class="comment-box" style="margin-bottom:16px"><div class="comment-author">Coder Instructions</div>{{ account['coder_comments'] }}</div>
+    {% endif %}
+    <form method="POST" action="{{ url_for('bill_account', account_id=account['id']) }}">
+        {% if account['status'] in ('Assigned to Biller','Rework - Biller') %}
+        <div style="margin-bottom:12px"><button type="submit" name="action" value="start" class="btn btn-secondary">Start Billing</button></div>
+        {% endif %}
+        {% if account['status'] in ('Billing In Progress','Rework - Biller') %}
+        <div class="form-group">
+            <label class="form-label">Billing Comments</label>
+            <textarea name="biller_comments" class="form-textarea" required>{{ account['biller_comments'] or '' }}</textarea>
+        </div>
+        <div class="btn-group">
+            <button type="submit" name="action" value="complete" class="btn btn-success">Complete & Finalize</button>
+            <button type="submit" name="action" value="clarification" class="btn btn-warning">Request Clarification</button>
+        </div>
+        {% endif %}
+    </form>
+</div>
+{% endif %}
+
+<!-- Audit Actions -->
+{% if session.get('role') in ('Auditor','Admin') and account['status'] in ('Completed','Finalized') and not account['audit_status'] %}
+<div class="card" style="margin-bottom:16px">
+    <div class="card-header"><h2>Audit</h2></div>
+    <form method="POST" action="{{ url_for('audit_account', account_id=account['id']) }}">
+        <div class="form-group"><label class="form-label">Result</label><select name="audit_result" class="form-select" required><option value="">Select</option><option value="Passed">Passed</option><option value="Failed">Failed</option></select></div>
+        <div class="form-group"><label class="form-label">Comments</label><textarea name="auditor_comments" class="form-textarea"></textarea></div>
+        <button type="submit" class="btn btn-primary">Submit Audit</button>
+    </form>
+</div>
+{% endif %}
+
+<!-- Admin Controls -->
+{% if session.get('role') in ('Admin','Auditor') %}
+<div class="grid-2" style="margin-bottom:16px">
+    <div class="card">
+        <div class="card-header"><h2>Change Priority / Status</h2></div>
+        <form method="POST" action="{{ url_for('update_account', account_id=account['id']) }}">
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Priority</label>
+                    <select name="priority" class="form-select">
+                        <option value="">— No change —</option>
+                        <option value="High" {% if account['priority']=='High' %}selected{% endif %}>High</option>
+                        <option value="Normal" {% if account['priority']=='Normal' %}selected{% endif %}>Normal</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select">
+                        <option value="">— No change —</option>
+                        <option value="Unassigned">Unassigned</option>
+                        <option value="Assigned">Assigned</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Finalized">Finalized</option>
+                        <option value="Cancelled">Cancelled</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Update</button>
+        </form>
+    </div>
+    <div class="card">
+        <div class="card-header"><h2>Reassign</h2></div>
+        <form method="POST" action="{{ url_for('assign_accounts') }}">
+            <input type="hidden" name="action" value="reassign">
+            <input type="hidden" name="account_id" value="{{ account['id'] }}">
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">As</label><select name="reassign_role" class="form-select"><option value="Coder">Coder</option><option value="Biller">Biller</option></select></div>
+                <div class="form-group"><label class="form-label">To</label><select name="new_user_id" class="form-select" required><option value="">Select</option>{% for c in coders %}<option value="{{ c['id'] }}">{{ c['full_name'] }} (Coder)</option>{% endfor %}{% for b in billers %}<option value="{{ b['id'] }}">{{ b['full_name'] }} (Biller)</option>{% endfor %}</select></div>
+            </div>
+            <button type="submit" class="btn btn-primary">Reassign</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<!-- History -->
+<div class="card">
+    <div class="card-header"><h2>Activity History</h2></div>
+    {% if history %}
+    <div class="timeline">
+        {% for h in history %}
+        <div class="timeline-item">
+            <div class="time">{{ h['created_at'] }}</div>
+            <div class="action">{{ h['action'] }}</div>
+            {% if h['details'] %}<div class="detail">{{ h['details'] }}</div>{% endif %}
+            <div class="actor">by {{ h['full_name'] or 'System' }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}<div class="empty-state"><p>No activity</p></div>{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Audit{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Audit Module</h1>
+    <p>Calendar-based productivity audit · Separate workflows for Coders and Billers</p>
+</div>
+
+<!-- Tabs: Coder Audit / Biller Audit -->
+<div class="filter-bar" style="margin-bottom:14px">
+    <a href="{{ url_for('audit_list', type='coder', date=audit_date) }}" class="btn btn-sm {% if audit_type=='coder' %}btn-primary{% else %}btn-secondary{% endif %}">Coder Audit</a>
+    <a href="{{ url_for('audit_list', type='biller', date=audit_date) }}" class="btn btn-sm {% if audit_type=='biller' %}btn-primary{% else %}btn-secondary{% endif %}">Biller Audit</a>
+</div>
+
+<!-- Calendar / Date selector + audit selection -->
+<div class="card" style="margin-bottom:20px">
+    <div class="card-header"><h2>Random Audit Selection — {{ audit_type|capitalize }}</h2></div>
+    <form method="POST" class="form-inline">
+        <input type="hidden" name="audit_type" value="{{ audit_type }}">
+        <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">{{ audit_type|capitalize }}</label>
+            <select name="audit_user_id" class="form-select" required>
+                <option value="">Choose {{ audit_type }}</option>
+                {% for u in users_for_audit %}<option value="{{ u['id'] }}">{{ u['full_name'] }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Work Date</label>
+            <input type="date" name="audit_date" class="form-input" value="{{ audit_date }}">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+            <label class="form-label"># to Audit</label>
+            <input type="number" name="audit_count" class="form-input" value="5" min="1" max="50" style="width:80px">
+        </div>
+        <button type="submit" class="btn btn-primary">Pick Random</button>
+    </form>
+</div>
+
+<!-- Date browser -->
+<div class="card" style="margin-bottom:20px">
+    <div class="card-header"><h2>Browse by Date</h2></div>
+    <form method="GET" class="form-inline">
+        <input type="hidden" name="type" value="{{ audit_type }}">
+        <input type="date" name="date" class="form-input" value="{{ audit_date }}">
+        <button type="submit" class="btn btn-secondary">View Date</button>
+    </form>
+</div>
+
+{% if pending_users %}
+<div class="card" style="margin-bottom:20px">
+    <div class="card-header"><h2>{{ audit_type|capitalize }}s with Pending Audits</h2></div>
+    <div class="table-wrapper">
+        <table>
+            <thead><tr><th>{{ audit_type|capitalize }}</th><th>Pending Audit</th></tr></thead>
+            <tbody>
+            {% for pu in pending_users %}
+            <tr>
+                <td><strong>{{ pu['full_name'] }}</strong></td>
+                <td><span class="badge badge-amber">{{ pu['pending_count'] }} accounts</span></td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<div class="filter-bar">
+    <a href="{{ url_for('audit_list', type=audit_type, date=audit_date) }}" class="btn btn-sm {% if not status_filter %}btn-primary{% else %}btn-secondary{% endif %}">All</a>
+    <a href="{{ url_for('audit_list', type=audit_type, date=audit_date, status='pending') }}" class="btn btn-sm {% if status_filter == 'pending' %}btn-primary{% else %}btn-secondary{% endif %}">Pending</a>
+    <a href="{{ url_for('audit_list', type=audit_type, date=audit_date, status='passed') }}" class="btn btn-sm {% if status_filter == 'passed' %}btn-primary{% else %}btn-secondary{% endif %}">Passed</a>
+    <a href="{{ url_for('audit_list', type=audit_type, date=audit_date, status='failed') }}" class="btn btn-sm {% if status_filter == 'failed' %}btn-primary{% else %}btn-secondary{% endif %}">Failed</a>
+</div>
+
+<div class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead><tr><th>Invoice</th><th>Coder</th><th>Biller</th><th>Status</th><th>Audit</th><th>Action</th></tr></thead>
+            <tbody>
+            {% for acc in accounts %}
+            <tr>
+                <td><strong>{{ acc['invoice_number'] }}</strong></td>
+                <td>{{ acc['coder_name'] or '—' }}</td>
+                <td>{{ acc['biller_name'] or '—' }}</td>
+                <td><span class="badge badge-blue">{{ acc['status'] }}</span></td>
+                <td>{% if acc['audit_status'] == 'Passed' %}<span class="badge badge-green">Passed</span>{% elif acc['audit_status'] == 'Failed' %}<span class="badge badge-red">Failed</span>{% else %}<span class="badge badge-amber">Pending</span>{% endif %}</td>
+                <td><a href="{{ url_for('account_detail', account_id=acc['id']) }}" class="btn btn-sm {% if not acc['audit_status'] %}btn-primary{% else %}btn-secondary{% endif %}">{% if not acc['audit_status'] %}Audit{% else %}View{% endif %}</a></td>
+            </tr>
+            {% endfor %}
+            {% if not accounts %}<tr><td colspan="6" class="empty-state">No accounts for this date</td></tr>{% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

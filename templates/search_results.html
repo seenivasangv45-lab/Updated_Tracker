@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Search Results{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Search Results</h1>
+    <p>{{ results|length }} accounts matching "{{ query }}"</p>
+</div>
+
+<div class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr><th>Invoice</th><th>Encounter</th><th>Patient</th><th>Payer</th><th>Status</th><th>Coder</th><th>Biller</th><th>Action</th></tr>
+            </thead>
+            <tbody>
+                {% for r in results %}
+                <tr>
+                    <td><strong>{{ r['invoice_number'] }}</strong></td>
+                    <td style="font-family:var(--font-mono); font-size:0.82rem">{{ r['encounter_id'] or '—' }}</td>
+                    <td>{{ r['patient_name'] or '—' }}</td>
+                    <td>{{ r['payer_name'] or '—' }}</td>
+                    <td><span class="badge badge-blue">{{ r['status'] }}</span></td>
+                    <td>{{ r['coder_name'] or '—' }}</td>
+                    <td>{{ r['biller_name'] or '—' }}</td>
+                    <td><a href="{{ url_for('account_detail', account_id=r['id']) }}" class="btn btn-sm btn-primary">View</a></td>
+                </tr>
+                {% endfor %}
+                {% if not results %}<tr><td colspan="8" class="empty-state">No accounts match "{{ query }}"</td></tr>{% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

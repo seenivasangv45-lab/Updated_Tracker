@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}Inventory{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-row">
+        <div>
+            <h1>Inventory</h1>
+            <p>{{ total }} total accounts · Live metrics</p>
+        </div>
+        {% if session.get('role') in ('SuperAdmin','Admin','Auditor') %}
+        <a href="{{ url_for('upload_inventory') }}" class="btn btn-primary">Upload FIN14</a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Live header metrics -->
+<div class="stat-grid">
+    <div class="stat-card blue"><div class="stat-label">Total Inventory</div><div class="stat-value">{{ metrics.total }}</div></div>
+    <div class="stat-card green"><div class="stat-label">Completed</div><div class="stat-value">{{ metrics.completed }}</div></div>
+    <div class="stat-card amber"><div class="stat-label">In-Progress</div><div class="stat-value">{{ metrics.in_progress }}</div></div>
+    <div class="stat-card purple"><div class="stat-label">Pending</div><div class="stat-value">{{ metrics.pending }}</div></div>
+</div>
+
+<form class="filter-bar" method="GET">
+    <input type="text" name="q" class="form-input" placeholder="Search invoice, encounter, patient, payer..." value="{{ search_q }}">
+    <select name="status" class="form-select">
+        <option value="">All Status</option>
+        <option value="Unassigned" {% if status_filter == 'Unassigned' %}selected{% endif %}>Unassigned</option>
+        <option value="Assigned" {% if status_filter == 'Assigned' %}selected{% endif %}>Assigned</option>
+        <option value="In-Process" {% if status_filter == 'In-Process' %}selected{% endif %}>In-Process</option>
+        <option value="Pending" {% if status_filter == 'Pending' %}selected{% endif %}>Pending</option>
+        <option value="Completed" {% if status_filter == 'Completed' %}selected{% endif %}>Completed</option>
+        <option value="Assigned to Biller" {% if status_filter == 'Assigned to Biller' %}selected{% endif %}>Assigned to Biller</option>
+        <option value="Finalized" {% if status_filter == 'Finalized' %}selected{% endif %}>Finalized</option>
+        <option value="Rework - Coder" {% if status_filter == 'Rework - Coder' %}selected{% endif %}>Rework - Coder</option>
+        <option value="Cancelled" {% if status_filter == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+    </select>
+    <select name="priority" class="form-select">
+        <option value="">All Priority</option>
+        <option value="High" {% if priority_filter == 'High' %}selected{% endif %}>High</option>
+        <option value="Medium" {% if priority_filter == 'Medium' %}selected{% endif %}>Medium</option>
+        <option value="Low" {% if priority_filter == 'Low' %}selected{% endif %}>Low</option>
+    </select>
+    {% if session.get('role') in ('SuperAdmin','Admin','Auditor') %}
+    <select name="assigned" class="form-select">
+        <option value="">All Assignment</option>
+        <option value="assigned" {% if assigned_filter == 'assigned' %}selected{% endif %}>Assigned</option>
+        <option value="not_assigned" {% if assigned_filter == 'not_assigned' %}selected{% endif %}>Not Assigned</option>
+    </select>
+    <select name="user_id" class="form-select">
+        <option value="">All Users</option>
+        {% for u in all_users %}
+        <option value="{{ u['id'] }}" {% if user_filter == u['id']|string %}selected{% endif %}>{{ u['full_name'] }} ({{ u['user_type'] }})</option>
+        {% endfor %}
+    </select>
+    {% endif %}
+    <input type="date" name="date" class="form-input" value="{{ date_filter }}">
+    <button type="submit" class="btn btn-secondary">Filter</button>
+    <a href="{{ url_for('inventory_list') }}" class="btn btn-secondary">Clear</a>
+</form>
+
+{% if session.get('role') in ('SuperAdmin','Admin','Auditor') %}
+<form id="assignForm" method="POST" action="{{ url_for('assign_accounts') }}">
+    <input type="hidden" name="action" value="">
+{% endif %}
+
+<div class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    {% if session.get('role') in ('SuperAdmin','Admin','Auditor') %}<th><input type="checkbox" id="selectAll" class="row-check"></th>{% endif %}
+                    <th>Invoice #</th><th>Encounter</th><th>Patient</th><th>Payer</th><th>Status</th><th>Priority</th><th>Coder</th><th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for acc in accounts %}
+                <tr>
+                    {% if session.get('role') in ('SuperAdmin','Admin','Auditor') %}<td><input type="checkbox" class="row-check" value="{{ acc['id'] }}"></td>{% endif %}
+                    <td><strong>{{ acc['invoice_number'] }}</strong></td>
+                    <td style="font-family:var(--font-mono); font-size:0.82rem">{{ acc['encounter_id'] or '—' }}</td>
+                    <td>{{ acc['patient_name'] or '—' }}</td>
+                    <td>{{ acc['payer_name'] or '—' }}</td>
+                    <td><span class="badge {% if 'Completed' in acc['status'] or 'Finalized' in acc['status'] or 'Passed' in acc['status'] %}badge-green{% elif 'Rework' in acc['status'] %}badge-red{% elif acc['status'] == 'Unassigned' or acc['status'] == 'Cancelled' %}badge-gray{% elif acc['status'] == 'In-Process' %}badge-amber{% elif acc['status'] == 'Pending' %}badge-purple{% else %}badge-blue{% endif %}">{{ acc['status'] }}</span></td>
+                    <td>{% if acc['priority']=='High' %}<span class="badge badge-red">High</span>{% elif acc['priority']=='Medium' %}<span class="badge badge-amber">Medium</span>{% else %}<span class="badge badge-gray">Low</span>{% endif %}</td>
+                    <td>{{ acc['coder_name'] or '—' }}</td>
+                    <td>
+                        <a href="{{ url_for('account_detail', account_id=acc['id']) }}" class="btn btn-sm btn-secondary">View</a>
+                        {% if can_delete() %}
+                        <form method="POST" action="{{ url_for('delete_account', account_id=acc['id']) }}" style="display:inline" onsubmit="return confirm('Permanently delete this account?')">
+                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not accounts %}<tr><td colspan="9" class="empty-state">No accounts found</td></tr>{% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if session.get('role') in ('SuperAdmin','Admin','Auditor') %}
+<div class="assign-bar" id="assignBar">
+    <span class="count">0 selected</span>
+    <select name="coder_id" class="form-select" style="width:auto">
+        <option value="">Select Coder</option>
+        {% for c in coders %}<option value="{{ c['id'] }}">{{ c['full_name'] }}</option>{% endfor %}
+    </select>
+    <button type="button" onclick="submitAssign('assign_coder')" class="btn btn-sm btn-primary">Assign Coder</button>
+    <select name="biller_id" class="form-select" style="width:auto">
+        <option value="">Select Biller</option>
+        {% for b in billers %}<option value="{{ b['id'] }}">{{ b['full_name'] }}</option>{% endfor %}
+    </select>
+    <button type="button" onclick="submitAssign('assign_biller')" class="btn btn-sm btn-success" formaction="{{ url_for('assign_billers') }}">Assign Biller</button>
+    <select name="priority_value" class="form-select" style="width:auto">
+        <option value="High">High</option>
+        <option value="Medium">Medium</option>
+        <option value="Low">Low</option>
+    </select>
+    <button type="button" onclick="submitAssign('set_priority')" class="btn btn-sm btn-warning">Set Priority</button>
+</div>
+</form>
+{% endif %}
+
+{% if total_pages > 1 %}
+<div class="pagination">
+    {% if page > 1 %}<a href="?page={{ page-1 }}&status={{ status_filter }}&priority={{ priority_filter }}&assigned={{ assigned_filter }}&user_id={{ user_filter }}&date={{ date_filter }}&q={{ search_q }}">Prev</a>{% endif %}
+    {% for p in range(1, total_pages+1) %}
+        {% if p == page %}<span class="active">{{ p }}</span>
+        {% elif p <= 3 or p >= total_pages - 2 or (p >= page - 1 and p <= page + 1) %}<a href="?page={{ p }}&status={{ status_filter }}&priority={{ priority_filter }}&assigned={{ assigned_filter }}&user_id={{ user_filter }}&date={{ date_filter }}&q={{ search_q }}">{{ p }}</a>
+        {% elif p == 4 or p == total_pages - 3 %}<span>...</span>{% endif %}
+    {% endfor %}
+    {% if page < total_pages %}<a href="?page={{ page+1 }}&status={{ status_filter }}&priority={{ priority_filter }}&assigned={{ assigned_filter }}&user_id={{ user_filter }}&date={{ date_filter }}&q={{ search_q }}">Next</a>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

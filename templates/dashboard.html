@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-row">
+        <div>
+            <h1>Dashboard</h1>
+            <p>Welcome back, {{ session.get('full_name') }}</p>
+        </div>
+        {% if session.get('user_type') in ('Coder','Biller') %}
+        <a href="{{ url_for('coding_review') }}" class="btn btn-primary" style="font-size:1rem; padding:12px 24px;">
+            Go to Coding Review →
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+{% if rework_alerts %}
+<div class="rework-alert">
+    <h3>
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 3L2 17H18L10 3Z" stroke="currentColor" stroke-width="1.8" fill="none"/><path d="M10 9V12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="14.5" r="0.8" fill="currentColor"/></svg>
+        Rework Required
+    </h3>
+    <ul>
+        {% for a in rework_alerts %}
+        <li><a href="{{ url_for('coding_review', account_id=a['id']) }}">{{ a['invoice_number'] }}</a> — {{ a['auditor_comments'] or 'Review required' }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+<div class="card" style="margin-bottom:20px">
+    <div class="card-header"><h2>Team Summary</h2></div>
+    <div class="stat-grid">
+        <a href="{{ url_for('drill_down', metric='total_inventory') }}" class="stat-card blue" style="text-decoration:none">
+            <div class="stat-label">Total Inventory</div>
+            <div class="stat-value">{{ data.get('total_inventory', 0) }}</div>
+        </a>
+        <a href="{{ url_for('drill_down', metric='total_completed') }}" class="stat-card green" style="text-decoration:none">
+            <div class="stat-label">Total Completed</div>
+            <div class="stat-value">{{ data.get('total_completed', 0) }}</div>
+        </a>
+        <a href="{{ url_for('drill_down', metric='high_priority_pending') }}" class="stat-card red" style="text-decoration:none">
+            <div class="stat-label">High Priority Pending</div>
+            <div class="stat-value">{{ data.get('high_priority_pending', 0) }}</div>
+        </a>
+        <a href="{{ url_for('drill_down', metric='remaining') }}" class="stat-card amber" style="text-decoration:none">
+            <div class="stat-label">Remaining</div>
+            <div class="stat-value">{{ data.get('remaining', 0) }}</div>
+        </a>
+        <a href="{{ url_for('drill_down', metric='within_tat') }}" class="stat-card green" style="text-decoration:none">
+            <div class="stat-label">Within TAT (48h)</div>
+            <div class="stat-value">{{ data.get('within_tat', 0) }}</div>
+        </a>
+        <a href="{{ url_for('drill_down', metric='breached_tat') }}" class="stat-card red" style="text-decoration:none">
+            <div class="stat-label">TAT Breached</div>
+            <div class="stat-value">{{ data.get('breached_tat', 0) }}</div>
+        </a>
+    </div>
+</div>
+
+{% if session.get('role') == 'User' %}
+<div class="card" style="margin-bottom:20px">
+    <div class="card-header"><h2>My Performance</h2></div>
+    <div class="stat-grid">
+        <a href="{{ url_for('drill_down', metric='my_assigned') }}" class="stat-card blue" style="text-decoration:none">
+            <div class="stat-label">My Pending</div>
+            <div class="stat-value">{{ data.get('my_assigned', 0) }}</div>
+        </a>
+        <a href="{{ url_for('drill_down', metric='my_completed') }}" class="stat-card green" style="text-decoration:none">
+            <div class="stat-label">My Completed</div>
+            <div class="stat-value">{{ data.get('my_completed', 0) }}</div>
+        </a>
+        <a href="{{ url_for('drill_down', metric='my_high') }}" class="stat-card red" style="text-decoration:none">
+            <div class="stat-label">High Priority</div>
+            <div class="stat-value">{{ data.get('my_high', 0) }}</div>
+        </a>
+        <a href="{{ url_for('drill_down', metric='my_rework') }}" class="stat-card amber" style="text-decoration:none">
+            <div class="stat-label">My Rework</div>
+            <div class="stat-value">{{ data.get('my_rework', 0) }}</div>
+        </a>
+        <div class="stat-card purple">
+            <div class="stat-label">Quality Score</div>
+            <div class="stat-value">{{ data.get('my_quality', 0) }}%</div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if session.get('role') in ('SuperAdmin','Admin','Auditor') %}
+<div class="grid-2">
+    <div class="card">
+        <div class="card-header"><h2>Operations</h2></div>
+        <div class="stat-grid" style="margin-bottom:0">
+            <a href="{{ url_for('drill_down', metric='unassigned') }}" class="stat-card amber" style="text-decoration:none">
+                <div class="stat-label">Unassigned</div>
+                <div class="stat-value">{{ data.get('unassigned', 0) }}</div>
+            </a>
+            <a href="{{ url_for('drill_down', metric='coding_pending') }}" class="stat-card blue" style="text-decoration:none">
+                <div class="stat-label">Coding</div>
+                <div class="stat-value">{{ data.get('coding_pending', 0) }}</div>
+            </a>
+            <a href="{{ url_for('drill_down', metric='billing_pending') }}" class="stat-card purple" style="text-decoration:none">
+                <div class="stat-label">Billing</div>
+                <div class="stat-value">{{ data.get('billing_pending', 0) }}</div>
+            </a>
+            <a href="{{ url_for('drill_down', metric='rework_pending') }}" class="stat-card red" style="text-decoration:none">
+                <div class="stat-label">Rework</div>
+                <div class="stat-value">{{ data.get('rework_pending', 0) }}</div>
+            </a>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header"><h2>Audit Summary</h2></div>
+        <div class="stat-grid" style="margin-bottom:0">
+            <div class="stat-card blue"><div class="stat-label">Audited</div><div class="stat-value">{{ data.get('audit_total', 0) }}</div></div>
+            <div class="stat-card green"><div class="stat-label">Passed</div><div class="stat-value">{{ data.get('audit_passed', 0) }}</div></div>
+            <div class="stat-card red"><div class="stat-label">Failed</div><div class="stat-value">{{ data.get('audit_failed', 0) }}</div></div>
+        </div>
+    </div>
+</div>
+
+{% if data.get('coder_workload') %}
+<div class="card" style="margin-top:20px">
+    <div class="card-header"><h2>Coder Workload</h2></div>
+    <div class="table-wrapper">
+        <table>
+            <thead><tr><th>Coder</th><th>Pending</th><th>Completed</th><th>High</th></tr></thead>
+            <tbody>
+            {% for cw in data.coder_workload %}
+            <tr>
+                <td><strong>{{ cw['full_name'] }}</strong></td>
+                <td>{{ cw['pending'] }}</td>
+                <td>{{ cw['completed'] }}</td>
+                <td>{% if cw['high_pri'] > 0 %}<span class="badge badge-red">{{ cw['high_pri'] }}</span>{% else %}0{% endif %}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}
